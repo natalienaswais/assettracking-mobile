@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; background: #f5f6f8; color: #333; }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: #fff; padding: 0 16px; height: 48px;
+    border-bottom: 1px solid #e0e0e0; position: relative;
+  }
+  .top-bar .title { font-size: 18px; font-weight: 700; color: #222; margin-right: 4px; }
+  .btn-instructions {
+    display: flex; align-items: center; gap: 4px;
+    background: #fff; border: 1px solid #ccc; border-radius: 4px;
+    padding: 4px 10px; font-size: 12px; font-weight: 600; color: #555; cursor: pointer;
+  }
+  .btn-instructions .icon { font-size: 14px; }
+  .top-center-alert {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    border: 1px solid #e07070; background: #fff; border-radius: 4px;
+    padding: 5px 12px; font-size: 11.5px; color: #333; line-height: 1.4;
+    max-width: 260px; text-align: center;
+  }
+  .top-center-alert a { color: #1a73e8; text-decoration: none; }
+  .top-center-alert a:hover { text-decoration: underline; }
+  .top-bar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .btn-export {
+    background: #4caf50; color: #fff; border: none; border-radius: 4px;
+    padding: 6px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-settings {
+    background: #fff; border: 1px solid #ccc; border-radius: 4px;
+    padding: 6px 12px; font-size: 13px; color: #555; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* ── TABS ── */
+  .tabs-bar {
+    background: #fff; border-bottom: 1px solid #e0e0e0;
+    padding: 0 16px; display: flex; align-items: flex-end; gap: 0;
+  }
+  .tab-btn {
+    padding: 12px 20px; font-size: 13px; font-weight: 500; color: #666;
+    background: none; border: none; border-bottom: 3px solid transparent;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tab-btn:hover { color: #222; }
+  .tab-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 600; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── VEHICLES TAB ── */
+  .filter-bar {
+    background: #fff; padding: 10px 16px; border-bottom: 1px solid #e8e8e8;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .filter-label { font-size: 12px; color: #666; }
+  .filter-select {
+    border: 1px solid #ccc; border-radius: 4px; padding: 5px 28px 5px 8px;
+    font-size: 12px; color: #333; background: #fff;
+    appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; cursor: pointer;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 2px; }
+  .search-wrap { margin-left: auto; position: relative; }
+  .search-wrap input {
+    border: 1px solid #ccc; border-radius: 4px; padding: 5px 30px 5px 8px;
+    font-size: 12px; width: 200px; color: #333;
+  }
+  .search-wrap::after {
+    content: '🔍'; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; pointer-events: none;
+  }
+
+  /* Summary cards */
+  .summary-row {
+    display: flex; gap: 1px; background: #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .summary-card {
+    background: #fff; padding: 16px 18px; flex: 1;
+    min-width: 0;
+  }
+  .summary-card.alert-card { border: 1.5px solid #e85050; border-top: none; }
+  .summary-card .card-title { font-size: 11.5px; color: #555; margin-bottom: 8px; }
+  .summary-card .big-num { font-size: 28px; font-weight: 300; color: #222; }
+  .summary-card .big-num sup { font-size: 14px; }
+  .summary-card .num-red { color: #e85050; }
+  .summary-card .sub-text { font-size: 11px; color: #888; margin-top: 2px; }
+  .summary-card .sub-text.orange { color: #e8a000; }
+
+  /* Vehicle Table */
+  .table-wrap { overflow-x: auto; background: #fff; }
+  table { border-collapse: collapse; width: 100%; min-width: 2200px; }
+  thead tr { background: #f5f6f8; }
+  th {
+    padding: 8px 8px; text-align: left; font-size: 11px; font-weight: 600;
+    color: #555; border-bottom: 1px solid #ddd; white-space: nowrap;
+    position: sticky; top: 0; background: #f5f6f8; z-index: 1;
+    cursor: pointer; user-select: none;
+  }
+  th .sort-arrow { display: inline-block; margin-left: 3px; color: #888; font-size: 10px; }
+  td {
+    padding: 7px 8px; border-bottom: 1px solid #eee; font-size: 12px;
+    color: #333; white-space: nowrap;
+  }
+  tr:hover td { background: #f9f9fb; }
+  .link-blue { color: #1a73e8; text-decoration: none; font-size: 12px; }
+  .link-blue:hover { text-decoration: underline; }
+  .btn-edit {
+    color: #1a73e8; background: none; border: none; font-size: 12px;
+    cursor: pointer; padding: 2px 4px; white-space: nowrap;
+  }
+  .btn-edit:hover { text-decoration: underline; }
+  .tag-yes { color: #e85050; font-size: 12px; }
+  .checkmark { color: #4caf50; font-size: 14px; }
+  .type-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .type-icon { font-size: 16px; }
+  .type-label { font-size: 10px; color: #777; }
+  .grayed td { color: #aaa; }
+  .grayed .link-blue { color: #7aabf0; }
+
+  /* ── ASSETS TAB ── */
+  .assets-page { padding: 20px 20px; }
+
+  .asset-stat-cards { display: flex; gap: 16px; margin-bottom: 20px; }
+  .asset-stat-card {
+    background: #fff; border: 1px solid #e8e8e8; border-radius: 8px;
+    padding: 18px 22px; flex: 1; position: relative; cursor: pointer;
+  }
+  .asset-stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .asset-stat-card .stat-arrow {
+    position: absolute; top: 16px; right: 16px; color: #bbb; font-size: 14px;
+  }
+  .asset-stat-card .stat-icon { font-size: 22px; margin-bottom: 8px; }
+  .asset-stat-card .stat-num { font-size: 30px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+  .asset-stat-card .stat-label { font-size: 13px; color: #555; margin-top: 4px; }
+  .asset-stat-card .stat-sub { font-size: 12px; margin-top: 4px; }
+  .stat-sub.orange { color: #e8a000; }
+  .stat-sub.red { color: #e85050; }
+
+  .asset-filters {
+    background: #fff; border: 1px solid #e8e8e8; border-radius: 8px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .asset-search {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px;
+    background: #fafafa;
+  }
+  .asset-search input {
+    border: none; background: none; font-size: 13px; color: #333;
+    width: 100%; outline: none;
+  }
+  .asset-search .search-icon { color: #999; font-size: 14px; }
+  .asset-filter-select {
+    border: 1px solid #ddd; border-radius: 6px; padding: 8px 28px 8px 12px;
+    font-size: 13px; color: #333; background: #fff;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; cursor: pointer;
+    min-width: 140px;
+  }
+
+  .asset-count { font-size: 13px; color: #777; margin-bottom: 12px; }
+
+  .asset-table-wrap { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; overflow: hidden; }
+  .asset-table { border-collapse: collapse; width: 100%; }
+  .asset-table thead tr { border-bottom: 1px solid #eee; }
+  .asset-table th {
+    padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600;
+    color: #777; background: #fff; white-space: nowrap; position: sticky;
+    top: 0; z-index: 1;
+  }
+  .asset-table td { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  .asset-table tr:last-child td { border-bottom: none; }
+  .asset-table tr:hover td { background: #fafafa; }
+
+  .asset-name { font-weight: 600; font-size: 13px; color: #1a1a1a; }
+  .asset-meta { font-size: 11px; color: #999; margin-top: 2px; }
+  .asset-site { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #444; }
+  .asset-site .pin { color: #888; font-size: 12px; }
+
+  /* Status badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-in-use { background: #e8f4f8; color: #1a7a9a; }
+  .badge-available { background: #eafaf0; color: #2a8a50; }
+  .badge-maintenance { background: #fff5e8; color: #c07000; }
+  .badge-inactive { background: #f5f5f5; color: #888; }
+
+  /* Utilization badges */
+  .util-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .util-on-track { background: #eafaf0; color: #2a8a50; border: 1px solid #b6dfc6; }
+  .util-underused { background: #fffbea; color: #b07800; border: 1px solid #f0d080; }
+  .util-overloaded { background: #fff0f0; color: #c03030; border: 1px solid #f0b0b0; }
+  .util-idle { background: #f5f5f5; color: #666; border: 1px solid #ddd; }
+  .util-icon { font-size: 13px; }
+
+  .last-signal { display: flex; align-items: center; gap: 5px; color: #555; font-size: 13px; }
+  .signal-icon { color: #888; font-size: 13px; }
+
+  .cost-normal { font-size: 13px; color: #333; }
+  .cost-wasted { font-size: 15px; font-weight: 700; color: #e85050; }
+  .cost-wasted-label { font-size: 11px; color: #e85050; }
+
+  .btn-view { background: none; border: none; font-size: 13px; color: #555; cursor: pointer; }
+  .btn-view:hover { color: #1a73e8; }
+  .btn-transfer {
+    background: #1a73e8; color: #fff; border: none; border-radius: 6px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-transfer:hover { background: #1558c0; }
+
+  /* scrollbar */
+  .table-wrap::-webkit-scrollbar { height: 6px; }
+  .table-wrap::-webkit-scrollbar-track { background: #f1f1f1; }
+  .table-wrap::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ TOP BAR ═══════════════ -->
+<div class="top-bar">
+  <span class="title">Fleet</span>
+  <button class="btn-instructions">
+    <span class="icon">ℹ</span> INSTRUCTIONS
+  </button>
+
+  <div class="top-center-alert">
+    <strong>B-862U</strong> Refrigerator motorhours <strong>6797h</strong>.<br>
+    Worked: <strong>10h</strong>. TEST <a href="#">Go to alert section</a><br>
+    27/03/2026 15:10
+  </div>
+
+  <div class="top-bar-right">
+    <button class="btn-export">EXPORT</button>
+    <button class="btn-settings">⚙ SETTINGS</button>
+  </div>
+</div>
+
+<!-- ═══════════════ TABS ═══════════════ -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('vehicles')">Vehicles</button>
+  <button class="tab-btn" onclick="switchTab('assets')">Assets</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VEHICLES TAB
+═══════════════════════════════════════ -->
+<div id="tab-vehicles" class="tab-content active">
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Select vehicle</span>
+      <select class="filter-select">
+        <option>All vehicles</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Visibility in reports</span>
+      <select class="filter-select">
+        <option>Visible (237)</option>
+      </select>
+    </div>
+    <div class="search-wrap">
+      <input type="text" placeholder="Search...">
+    </div>
+  </div>
+
+  <!-- Summary cards row 1 -->
+  <div class="summary-row">
+    <div class="summary-card alert-card">
+      <div class="card-title">Documents &amp; Licences</div>
+      <div class="big-num num-red">11 <span style="font-size:16px;font-weight:400">Expired</span></div>
+      <div class="sub-text">⊙ 0 due soon</div>
+    </div>
+    <div class="summary-card alert-card">
+      <div class="card-title">Service reminders</div>
+      <div class="big-num num-red">3 <span style="font-size:16px;font-weight:400">Overdue</span></div>
+      <div class="sub-text orange">2 Due soon</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-title">Distance traveled this month</div>
+      <div class="big-num">102124<sup>.4</sup> <span style="font-size:14px">km</span></div>
+      <div class="sub-text">87969.7 km last month</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-title">Engine hours this month</div>
+      <div class="big-num">1593<sup>.7</sup> <span style="font-size:14px">h</span></div>
+      <div class="sub-text">1335.9 last month</div>
+    </div>
+  </div>
+
+  <!-- Summary cards row 2 -->
+  <div class="summary-row">
+    <div class="summary-card">
+      <div class="card-title">Fuel consumed this month</div>
+      <div class="big-num">17351<span style="font-size:16px">L</span></div>
+      <div class="sub-text">12962 L last month</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-title">Fuel consumed this month</div>
+      <div class="big-num">0</div>
+      <div class="sub-text">0 KG last month</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-title">Repair costs this month</div>
+      <div class="big-num">0</div>
+      <div class="sub-text">0 EUR last month</div>
+    </div>
+    <div class="summary-card" style="visibility:hidden"></div>
+  </div>
+
+  <!-- Vehicle Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>↓ ID <span class="sort-arrow">↓</span></th>
+          <th>↓ Type <span class="sort-arrow">↓</span></th>
+          <th>↓ 2G <span class="sort-arrow">↓</span></th>
+          <th>↓ End of Life Device <span class="sort-arrow">↓</span> ⊙</th>
+          <th>↓ Licence plate <span class="sort-arrow">↓</span></th>
+          <th>↓ Make / Model <span class="sort-arrow">↓</span></th>
+          <th>↓ Icon text <span class="sort-arrow">↓</span></th>
+          <th>↓ Vehicle Title <span class="sort-arrow">↓</span></th>
+          <th>↓ Year <span class="sort-arrow">↓</span></th>
+          <th>↓ VIN <span class="sort-arrow">↓</span></th>
+          <th>↓ Vehicle reg. certificate No. <span class="sort-arrow">↓</span></th>
+          <th>↓ Mileage (GPS) <span class="sort-arrow">↓</span></th>
+          <th>↓ Mileage (CAN) <span class="sort-arrow">↓</span></th>
+          <th>↓ Engine hours (GPS) <span class="sort-arrow">↓</span></th>
+          <th>↓ Engine hours (CAN) <span class="sort-arrow">↓</span></th>
+          <th>Avg. daily mileage</th>
+          <th>Access to the Mapon Driver application</th>
+          <th>↓ Driver <span class="sort-arrow">↓</span></th>
+          <th>Groups</th>
+          <th>↓ Depot <span class="sort-arrow">↓</span></th>
+          <th>Avg. fuel consumption l/100km</th>
+          <th>Avg. fuel consumption l/h</th>
+          <th>Avg. fuel consumption kg/100km</th>
+          <th>Avg. fuel consumption (by norm)</th>
+          <th>↓ Eco speed <span class="sort-arrow">↓</span></th>
+          <th>↓ Excessive idling <span class="sort-arrow">↓</span></th>
+          <th>Linked BLE device</th>
+          <th>E-toll ID</th>
+          <th>↓ test date <span class="sort-arrow">↓</span></th>
+          <th>↓ test_sort <span class="sort-arrow">↓</span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- Row: Animal 527961 -->
+        <tr>
+          <td>527961</td>
+          <td><div class="type-cell"><span class="type-icon">🐾</span><span class="type-label">Animal</span></div></td>
+          <td>-</td><td>-</td>
+          <td><a href="#" class="link-blue">traillllleeer</a></td>
+          <td>test</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>0 km</td><td>-</td><td>-</td><td>-</td>
+          <td>TestBase</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>85 km/h</td><td>2min</td><td>-</td><td>-</td><td>-</td><td>b</td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+        <!-- Row: Animal 539688 -->
+        <tr>
+          <td>539688</td>
+          <td><div class="type-cell"><span class="type-icon">🐾</span><span class="type-label">Animal</span></div></td>
+          <td>-</td><td>-</td>
+          <td><a href="#" class="link-blue">sdfsdf</a></td>
+          <td>test</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>0 km</td><td>-</td>
+          <td>estefany.garcia</td><td>-</td>
+          <td>TestBase</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>85 km/h</td><td>2min</td><td>-</td><td>-</td><td>-</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+        <!-- Row: Bicycle 343813 (grayed) -->
+        <tr class="grayed">
+          <td>343813</td>
+          <td><div class="type-cell"><span class="type-icon">🚲</span><span class="type-label">Bicycle</span></div></td>
+          <td>-</td><td>-</td>
+          <td><a href="#" class="link-blue">MG0029</a></td>
+          <td>VW bug</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>0 km</td><td>-</td><td>-</td><td>-</td>
+          <td>TestBase</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>85 km/h</td><td>2min</td><td>-</td><td>-</td><td>-</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+        <!-- Row: Boat 503057 -->
+        <tr>
+          <td>503057</td>
+          <td><div class="type-cell"><span class="type-icon">⛵</span><span class="type-label">Boat</span></div></td>
+          <td>-</td><td>-</td>
+          <td><a href="#" class="link-blue">1st un long name trailer</a></td>
+          <td>Test virtual unit</td>
+          <td>-</td><td>XXXX</td><td>-</td><td>-</td><td>-</td>
+          <td>3218.7 km</td><td>-</td>
+          <td>5 h</td><td>-</td>
+          <td>2.2 km</td>
+          <td><span class="checkmark">✓</span></td>
+          <td>-</td>
+          <td>GQA_50, QA_SBV 1, QA_SBV 3,…</td>
+          <td>TestBase</td>
+          <td>3.7 l/100km</td><td>-</td><td>-</td><td>-</td>
+          <td>84 km/h</td><td>2min</td>
+          <td>Suzanna test BLE</td><td>-</td>
+          <td>04/07/2025</td><td>d</td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+        <!-- Row: Bus 143136 -->
+        <tr>
+          <td>143136</td>
+          <td><div class="type-cell"><span class="type-icon">🚌</span><span class="type-label">Bus</span></div></td>
+          <td>-</td><td>-</td>
+          <td><a href="#" class="link-blue">TI-1234</a></td>
+          <td>TIGER-1</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>0.0 km</td><td>-</td><td>-</td><td>-</td>
+          <td>0 km</td>
+          <td><span class="checkmark">✓</span></td>
+          <td>-</td>
+          <td>All vehicles (group), testa…</td>
+          <td>TestBase</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>85 km/h</td><td>2min</td><td>-</td><td>-</td><td>-</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+        <!-- Row: Bus 451356 -->
+        <tr>
+          <td>451356</td>
+          <td><div class="type-cell"><span class="type-icon">🚌</span><span class="type-label">Bus</span></div></td>
+          <td><span class="tag-yes">Yes</span></td><td>-</td>
+          <td><a href="#" class="link-blue">BLE MOTHERSHIP</a></td>
+          <td>BLE TEST BOX</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>3.5 km</td><td>-</td>
+          <td>1 h</td><td>-</td>
+          <td>0.0 km</td><td>-</td>
+          <td>vladimirs.fedorovics</td>
+          <td>BLE Tag Tests, GQA_50, GQA_51</td>
+          <td>TestBase</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>85 km/h</td><td>2min</td><td>-</td><td>-</td><td>-</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+        <!-- Row: Bus/Truck 727367 -->
+        <tr>
+          <td>727367</td>
+          <td><div class="type-cell"><span class="type-icon">🚐</span><span class="type-label">Bus</span></div></td>
+          <td><span class="tag-yes">Yes</span></td><td>-</td>
+          <td><a href="#" class="link-blue">MA-1673 Hotel</a></td>
+          <td>VW Crafter</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>6892.7 km</td>
+          <td>194850.0 km</td>
+          <td>151.9 h</td><td>-</td>
+          <td>22.5 km</td><td>-</td><td>-</td>
+          <td>LL Coll…</td>
+          <td>TestBase</td>
+          <td>⊙ 9.0</td><td>-</td>
+          <td>7.5 l/100km</td><td>-</td>
+          <td>-</td><td>2min</td><td>-</td><td>-</td><td>-</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+        <!-- Additional vehicles -->
+        <tr>
+          <td>612045</td>
+          <td><div class="type-cell"><span class="type-icon">🚗</span><span class="type-label">Car</span></div></td>
+          <td>-</td><td>-</td>
+          <td><a href="#" class="link-blue">LV-4521</a></td>
+          <td>Toyota Corolla</td>
+          <td>-</td><td>Fleet Car A</td><td>2021</td><td>JT2BF22K1W0123456</td><td>-</td>
+          <td>48320.5 km</td><td>-</td><td>-</td><td>-</td>
+          <td>18.4 km</td><td><span class="checkmark">✓</span></td>
+          <td>john.smith</td>
+          <td>GQA_50, Sales Team</td>
+          <td>TestBase</td>
+          <td>8.2 l/100km</td><td>-</td><td>-</td><td>-</td>
+          <td>110 km/h</td><td>5min</td><td>-</td><td>ET-0012</td><td>-</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+        <tr>
+          <td>619887</td>
+          <td><div class="type-cell"><span class="type-icon">🚗</span><span class="type-label">Car</span></div></td>
+          <td>-</td><td>-</td>
+          <td><a href="#" class="link-blue">LV-7723</a></td>
+          <td>Ford Transit</td>
+          <td>-</td><td>Delivery Van B</td><td>2020</td><td>-</td><td>-</td>
+          <td>92100.0 km</td><td>-</td><td>-</td><td>-</td>
+          <td>32.1 km</td><td>-</td>
+          <td>-</td>
+          <td>GQA_51, Logistics</td>
+          <td>TestBase</td>
+          <td>9.8 l/100km</td><td>-</td><td>-</td><td>-</td>
+          <td>90 km/h</td><td>3min</td><td>-</td><td>-</td><td>-</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+        <tr>
+          <td>701223</td>
+          <td><div class="type-cell"><span class="type-icon">🚛</span><span class="type-label">Truck</span></div></td>
+          <td><span class="tag-yes">Yes</span></td><td>-</td>
+          <td><a href="#" class="link-blue">EU-9981 Heavy</a></td>
+          <td>Scania R500</td>
+          <td>-</td><td>Long Haul 01</td><td>2019</td><td>YS2R4X20005123987</td><td>-</td>
+          <td>312450.0 km</td>
+          <td>314200.0 km</td>
+          <td>4210.5 h</td><td>4198.0 h</td>
+          <td>87.2 km</td><td>-</td>
+          <td>peter.ivanov</td>
+          <td>LL Coll, Long Haul</td>
+          <td>TestBase</td>
+          <td>28.4 l/100km</td><td>5.1 l/h</td><td>-</td><td>27.0 l/100km</td>
+          <td>90 km/h</td><td>10min</td><td>TruckBLE-01</td><td>ET-7741</td><td>01/12/2025</td><td></td>
+          <td><button class="btn-edit">✏ Edit</button></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+</div><!-- end vehicles tab -->
+
+
+<!-- ═══════════════════════════════════════
+     ASSETS TAB
+═══════════════════════════════════════ -->
+<div id="tab-assets" class="tab-content">
+  <div class="assets-page">
+
+    <!-- Stat cards -->
+    <div class="asset-stat-cards">
+      <div class="asset-stat-card">
+        <span class="stat-arrow">›</span>
+        <div class="stat-icon" style="color:#2a8a50">✅</div>
+        <div class="stat-num">8</div>
+        <div class="stat-label">Available now</div>
+      </div>
+      <div class="asset-stat-card">
+        <span class="stat-arrow">›</span>
+        <div class="stat-icon" style="color:#e8a000">📉</div>
+        <div class="stat-num">4</div>
+        <div class="stat-label">Idle assets</div>
+        <div class="stat-sub orange">€3,706 in idle costs</div>
+      </div>
+      <div class="asset-stat-card">
+        <span class="stat-arrow">›</span>
+        <div class="stat-icon" style="color:#e85050">⚠️</div>
+        <div class="stat-num">6</div>
+        <div class="stat-label">Need investigation</div>
+        <div class="stat-sub red">Missing or no signal &gt;24h</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="asset-filters">
+      <div class="asset-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search by name, ID, category, or site...">
+      </div>
+      <select class="asset-filter-select">
+        <option>All Categories</option>
+        <option>Generator</option>
+        <option>Box / Container</option>
+        <option>Trailer</option>
+        <option>Machinery</option>
+        <option>Tool</option>
+      </select>
+      <select class="asset-filter-select">
+        <option>All Statuses</option>
+        <option>In Use</option>
+        <option>Available</option>
+        <option>Maintenance</option>
+        <option>Inactive</option>
+      </select>
+      <select class="asset-filter-select" style="min-width:160px">
+        <option>Sort: Default</option>
+        <option>Sort: Name A–Z</option>
+        <option>Sort: Cost Impact</option>
+        <option>Sort: Last Signal</option>
+      </select>
+    </div>
+
+    <div class="asset-count">23 assets found</div>
+
+    <!-- Asset table -->
+    <div class="asset-table-wrap">
+      <table class="asset-table">
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Site</th>
+            <th>Status</th>
+            <th>Utilization</th>
+            <th>Last Signal</th>
+            <th>Cost Impact</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- CAT DE200 Generator – London – In Use -->
+          <tr>
+            <td>
+              <div class="asset-name">CAT DE200 Generator</div>
+              <div class="asset-meta">A-1001 · Generator</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> London</div></td>
+            <td><span class="badge badge-in-use">In Use</span></td>
+            <td><span class="util-badge util-on-track">88% /80% · On Track</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 4m ago</div></td>
+            <td><span class="cost-normal">€3,600/mo</span></td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+
+          <!-- CAT DE200 Generator – Budapest – Available / Underused -->
+          <tr>
+            <td>
+              <div class="asset-name">CAT DE200 Generator</div>
+              <div class="asset-meta">A-1002 · Generator</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Budapest</div></td>
+            <td><span class="badge badge-available">Available</span></td>
+            <td><span class="util-badge util-underused">12% · Underused</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 12m ago</div></td>
+            <td>
+              <div class="cost-wasted">€960</div>
+              <div class="cost-wasted-label">wasted</div>
+            </td>
+            <td><button class="btn-transfer">Request Transfer</button></td>
+          </tr>
+
+          <!-- Atlas Copco QAS 150 – Munich – In Use / Overloaded -->
+          <tr>
+            <td>
+              <div class="asset-name">Atlas Copco QAS 150</div>
+              <div class="asset-meta">A-1003 · Generator</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Munich</div></td>
+            <td><span class="badge badge-in-use">In Use</span></td>
+            <td><span class="util-badge util-overloaded">↗ 92% /75% · Overloaded</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 2m ago</div></td>
+            <td><span class="cost-normal">€4,350/mo</span></td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+
+          <!-- Atlas Copco QAS 80 – Vienna – Available / Idle -->
+          <tr>
+            <td>
+              <div class="asset-name">Atlas Copco QAS 80</div>
+              <div class="asset-meta">A-1004 · Generator</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Vienna</div></td>
+            <td><span class="badge badge-available">Available</span></td>
+            <td><span class="util-badge util-idle">↘ 5% · Idle</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 3h ago</div></td>
+            <td>
+              <div class="cost-wasted">€1,330</div>
+              <div class="cost-wasted-label">wasted</div>
+            </td>
+            <td><button class="btn-transfer">Request Transfer</button></td>
+          </tr>
+
+          <!-- Tractor Attachment 1 (from vehicles data) -->
+          <tr>
+            <td>
+              <div class="asset-name">Tractor Attachment 1</div>
+              <div class="asset-meta">A-508168 · Box / Container</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> TestBase</div></td>
+            <td><span class="badge badge-available">Available</span></td>
+            <td><span class="util-badge util-idle">↘ 0% · Idle</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 2d ago</div></td>
+            <td>
+              <div class="cost-wasted">€800</div>
+              <div class="cost-wasted-label">wasted</div>
+            </td>
+            <td><button class="btn-transfer">Request Transfer</button></td>
+          </tr>
+
+          <!-- Tractor Attachment 2 (from vehicles data) -->
+          <tr>
+            <td>
+              <div class="asset-name">Tractor Attachment 2</div>
+              <div class="asset-meta">A-508170 · Box / Container</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> TestBase</div></td>
+            <td><span class="badge badge-in-use">In Use</span></td>
+            <td><span class="util-badge util-on-track">45% /50% · On Track</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 1h ago</div></td>
+            <td><span class="cost-normal">€1,200/mo</span></td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+
+          <!-- Manitou MLT 741 – Warsaw – In Use -->
+          <tr>
+            <td>
+              <div class="asset-name">Manitou MLT 741</div>
+              <div class="asset-meta">A-2001 · Machinery</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Warsaw</div></td>
+            <td><span class="badge badge-in-use">In Use</span></td>
+            <td><span class="util-badge util-on-track">71% /70% · On Track</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 8m ago</div></td>
+            <td><span class="cost-normal">€2,800/mo</span></td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+
+          <!-- Kaeser M122 Compressor – Prague – Available / Underused -->
+          <tr>
+            <td>
+              <div class="asset-name">Kaeser M122 Compressor</div>
+              <div class="asset-meta">A-2002 · Machinery</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Prague</div></td>
+            <td><span class="badge badge-available">Available</span></td>
+            <td><span class="util-badge util-underused">18% · Underused</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 45m ago</div></td>
+            <td>
+              <div class="cost-wasted">€576</div>
+              <div class="cost-wasted-label">wasted</div>
+            </td>
+            <td><button class="btn-transfer">Request Transfer</button></td>
+          </tr>
+
+          <!-- Flatbed Trailer 12m – Berlin – In Use -->
+          <tr>
+            <td>
+              <div class="asset-name">Flatbed Trailer 12m</div>
+              <div class="asset-meta">A-3001 · Trailer</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Berlin</div></td>
+            <td><span class="badge badge-in-use">In Use</span></td>
+            <td><span class="util-badge util-on-track">80% /75% · On Track</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 15m ago</div></td>
+            <td><span class="cost-normal">€1,950/mo</span></td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+
+          <!-- Refrigerated Container 20ft – Riga -->
+          <tr>
+            <td>
+              <div class="asset-name">Refrigerated Container 20ft</div>
+              <div class="asset-meta">A-3002 · Box / Container</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Riga</div></td>
+            <td><span class="badge badge-maintenance">Maintenance</span></td>
+            <td><span class="util-badge util-idle">— In service</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 6h ago</div></td>
+            <td><span class="cost-normal">€680/mo</span></td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+
+          <!-- Power Tool Set – Amsterdam -->
+          <tr>
+            <td>
+              <div class="asset-name">Power Tool Set A</div>
+              <div class="asset-meta">A-4001 · Tool</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Amsterdam</div></td>
+            <td><span class="badge badge-available">Available</span></td>
+            <td><span class="util-badge util-underused">8% · Underused</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 1d ago</div></td>
+            <td>
+              <div class="cost-wasted">€320</div>
+              <div class="cost-wasted-label">wasted</div>
+            </td>
+            <td><button class="btn-transfer">Request Transfer</button></td>
+          </tr>
+
+          <!-- JCB 3CX Backhoe – Frankfurt – In Use / Overloaded -->
+          <tr>
+            <td>
+              <div class="asset-name">JCB 3CX Backhoe</div>
+              <div class="asset-meta">A-2003 · Machinery</div>
+            </td>
+            <td><div class="asset-site"><span class="pin">📍</span> Frankfurt</div></td>
+            <td><span class="badge badge-in-use">In Use</span></td>
+            <td><span class="util-badge util-overloaded">↗ 96% /80% · Overloaded</span></td>
+            <td><div class="last-signal"><span class="signal-icon">📶</span> 3m ago</div></td>
+            <td><span class="cost-normal">€5,100/mo</span></td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div><!-- end assets tab -->
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('[onclick="switchTab(\'' + name + '\')"]').classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+</script>
+</body>
+</html>
